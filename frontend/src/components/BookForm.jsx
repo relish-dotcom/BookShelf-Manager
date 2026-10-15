@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, BookPlus, Save, ImagePlus } from "lucide-react";
+import { X, BookPlus, Save, ImagePlus, BookOpen } from "lucide-react";
 
 const emptyBook = {
   bookName: "",
@@ -24,41 +24,49 @@ export default function BookForm({
 }) {
   const [form, setForm] = useState(emptyBook);
   const [coverFile, setCoverFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
+  // Initialize the form when adding or editing a book.
   useEffect(() => {
     setForm({
       ...emptyBook,
       ...(initialBook || {}),
     });
+
     setCoverFile(null);
+    setPreviewUrl("");
     setError("");
+    setImageError(false);
   }, [initialBook]);
 
-  const coverPreview = useEffect;
-
-  const [previewUrl, setPreviewUrl] = useState("");
-
+  // Create a temporary preview for the selected file.
   useEffect(() => {
     if (!coverFile) {
       setPreviewUrl("");
       return;
     }
 
-    const url = URL.createObjectURL(coverFile);
-    setPreviewUrl(url);
+    const objectUrl = URL.createObjectURL(coverFile);
+    setPreviewUrl(objectUrl);
+    setImageError(false);
 
-    return () => URL.revokeObjectURL(url);
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
   }, [coverFile]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    setForm((prev) => ({
-      ...prev,
+    setForm((previous) => ({
+      ...previous,
       [name]:
-        name === "readingProgress" ? Number(value) : value,
+        name === "readingProgress"
+          ? Number(value)
+          : value,
     }));
   };
 
@@ -66,6 +74,8 @@ export default function BookForm({
     const file = e.target.files?.[0];
 
     if (!file) return;
+
+    setError("");
 
     if (!ALLOWED_TYPES.includes(file.type)) {
       setError("Choose a JPG, PNG, or WebP image.");
@@ -79,8 +89,18 @@ export default function BookForm({
       return;
     }
 
-    setError("");
+    setImageError(false);
     setCoverFile(file);
+
+    // Allow selecting the same file again later.
+    e.target.value = "";
+  };
+
+  const handleRemoveCover = () => {
+    setCoverFile(null);
+    setPreviewUrl("");
+    setImageError(false);
+    setError("");
   };
 
   const handleSubmit = async (e) => {
@@ -117,6 +137,7 @@ export default function BookForm({
   const inputClass =
     "w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-800 outline-none transition focus:border-stone-500 focus:ring-2 focus:ring-[#BEC5A4]";
 
+  // Show the newly selected file first, otherwise the saved cover.
   const displayedCover = previewUrl || form.coverImage;
 
   return (
@@ -126,6 +147,7 @@ export default function BookForm({
           <h2 className="font-serif text-2xl text-stone-800">
             {initialBook ? "Edit your book" : "Add a new book"}
           </h2>
+
           <p className="mt-1 text-sm text-stone-500">
             A little more room for another story.
           </p>
@@ -145,9 +167,13 @@ export default function BookForm({
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="bookName" className="mb-1.5 block text-sm font-medium text-stone-700">
+          <label
+            htmlFor="bookName"
+            className="mb-1.5 block text-sm font-medium text-stone-700"
+          >
             Book name *
           </label>
+
           <input
             id="bookName"
             name="bookName"
@@ -161,9 +187,13 @@ export default function BookForm({
         </div>
 
         <div>
-          <label htmlFor="authorName" className="mb-1.5 block text-sm font-medium text-stone-700">
+          <label
+            htmlFor="authorName"
+            className="mb-1.5 block text-sm font-medium text-stone-700"
+          >
             Author name *
           </label>
+
           <input
             id="authorName"
             name="authorName"
@@ -177,9 +207,13 @@ export default function BookForm({
         </div>
 
         <div>
-          <label htmlFor="bookType" className="mb-1.5 block text-sm font-medium text-stone-700">
+          <label
+            htmlFor="bookType"
+            className="mb-1.5 block text-sm font-medium text-stone-700"
+          >
             Book type
           </label>
+
           <select
             id="bookType"
             name="bookType"
@@ -193,7 +227,10 @@ export default function BookForm({
         </div>
 
         <div>
-          <label htmlFor="coverImage" className="mb-1.5 block text-sm font-medium text-stone-700">
+          <label
+            htmlFor="coverImage"
+            className="mb-1.5 block text-sm font-medium text-stone-700"
+          >
             Cover image
           </label>
 
@@ -202,8 +239,11 @@ export default function BookForm({
             className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-stone-300 bg-white px-4 py-5 text-sm text-stone-600 transition hover:border-stone-500 hover:bg-stone-50"
           >
             <ImagePlus size={20} />
+
             <span className="max-w-full truncate">
-              {coverFile ? coverFile.name : "Choose an image"}
+              {coverFile
+                ? coverFile.name
+                : "Choose an image"}
             </span>
           </label>
 
@@ -220,45 +260,68 @@ export default function BookForm({
             Optional. JPG, PNG, or WebP. Maximum 5 MB.
           </p>
 
-          {displayedCover && (
-            <div className="mt-3">
-              <p className="mb-2 text-xs font-medium text-stone-600">
-                Cover preview
-              </p>
-              <img
-                src={displayedCover}
-                alt={`Cover of ${form.bookName || "your book"}`}
-                className="h-48 max-w-full rounded-xl border border-stone-200 bg-white object-contain"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
-              />
-            </div>
-          )}
+          {/* Cover preview */}
+          <div className="mt-4">
+            <p className="mb-2 text-sm font-medium text-stone-700">
+              Cover preview
+            </p>
 
-          {coverFile && (
-            <button
-              type="button"
-              onClick={() => {
-                setCoverFile(null);
-                setError("");
-              }}
-              className="mt-2 text-sm text-red-600 hover:underline"
-            >
-              Remove selected image
-            </button>
-          )}
+            <div className="flex min-h-52 items-center justify-center overflow-hidden rounded-xl border border-stone-200 bg-[#EEECE3] p-3">
+              {displayedCover && !imageError ? (
+                <img
+                  key={displayedCover}
+                  src={displayedCover}
+                  alt={`Cover of ${form.bookName || "your book"}`}
+                  className="block max-h-72 max-w-full rounded-lg object-contain"
+                  onLoad={() => setImageError(false)}
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <div className="flex flex-col items-center gap-3 py-8 text-stone-500">
+                  <BookOpen size={42} strokeWidth={1.5} />
+
+                  <p className="text-sm">
+                    {imageError
+                      ? "Unable to load cover image"
+                      : "Your cover will appear here"}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {imageError && displayedCover && (
+              <p className="mt-2 text-sm text-red-600">
+                The image URL could not be loaded. Try choosing
+                the image again or check the saved image URL.
+              </p>
+            )}
+
+            {coverFile && (
+              <button
+                type="button"
+                onClick={handleRemoveCover}
+                className="mt-2 text-sm text-red-600 hover:underline"
+              >
+                Remove selected image
+              </button>
+            )}
+          </div>
         </div>
 
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <label htmlFor="readingProgress" className="text-sm font-medium text-stone-700">
+            <label
+              htmlFor="readingProgress"
+              className="text-sm font-medium text-stone-700"
+            >
               Reading progress
             </label>
+
             <span className="rounded-full bg-[#E5E8D9] px-3 py-1 text-sm font-semibold text-stone-700">
               {form.readingProgress}%
             </span>
           </div>
+
           <input
             id="readingProgress"
             name="readingProgress"
@@ -284,7 +347,12 @@ export default function BookForm({
             disabled={saving}
             className="inline-flex items-center justify-center gap-2 rounded-full bg-[#BEC5A4] px-5 py-3 font-medium text-stone-800 transition hover:bg-[#ADB695] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {initialBook ? <Save size={18} /> : <BookPlus size={18} />}
+            {initialBook ? (
+              <Save size={18} />
+            ) : (
+              <BookPlus size={18} />
+            )}
+
             {saving
               ? "Saving..."
               : initialBook

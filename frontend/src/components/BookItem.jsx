@@ -20,30 +20,40 @@ export default function BookItem({
     <article className="group min-w-0">
       {/* Book cover */}
       <div className="relative aspect-[3/4] overflow-hidden rounded-xl border border-stone-200 bg-[#EAE9DF] shadow-sm transition duration-300 group-hover:-translate-y-1 group-hover:shadow-md">
-        {book.coverImage ? (
+        {book.coverImage && (
           <img
             src={book.coverImage}
             alt={`Cover of ${book.bookName}`}
             loading="lazy"
-            className="absolute inset-0h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-cover"
             onError={(e) => {
               e.currentTarget.style.display = "none";
-              e.currentTarget.nextElementSibling?.classList.remove("hidden");
+
+              const placeholder =
+                e.currentTarget.parentElement?.querySelector(
+                  ".cover-placeholder"
+                );
+
+              placeholder?.classList.remove("hidden");
             }}
           />
-        ) : null}
+        )}
 
+        {/* Placeholder when there is no cover */}
         <div
-          className={`absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center text-stone-500 ${
-            !book.coverImage ? "" : "hidden"
+          className={`cover-placeholder absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center text-stone-500 ${
+            book.coverImage ? "hidden" : ""
           }`}
         >
           <BookOpen size={38} strokeWidth={1.3} />
-          <span className="font-serif text-sm">A new chapter</span>
+
+          <span className="font-serif text-sm">
+            A new chapter
+          </span>
         </div>
 
-        {/* Edit and delete actions */}
-        <div className="absolute right-2 top-2 flex gap-1.5 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+        {/* Edit and delete buttons */}
+        <div className="absolute right-2 top-2 z-10 flex gap-1.5 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
           <button
             type="button"
             onClick={() => onEdit(book)}
@@ -63,14 +73,15 @@ export default function BookItem({
           </button>
         </div>
 
+        {/* Completed badge */}
         {progress === 100 && (
-          <div className="absolute bottom-2 right-2 rounded-full bg-white/95 p-1.5 text-green-700">
+          <div className="absolute bottom-2 right-2 z-10 rounded-full bg-white/95 p-1.5 text-green-700">
             <CheckCircle2 size={18} />
           </div>
         )}
       </div>
 
-      {/* Book details below the cover */}
+      {/* Book details */}
       <div className="pt-3">
         <span className="mb-1 inline-block rounded-full bg-[#E8EBDD] px-2.5 py-1 text-[10px] font-medium text-stone-600 sm:text-xs">
           {book.bookType || "Other Book"}
@@ -87,8 +98,10 @@ export default function BookItem({
           {book.authorName}
         </p>
 
+        {/* Reading progress */}
         <div className="mt-3 flex items-center justify-between gap-2 text-xs text-stone-600 sm:text-sm">
           <span>Reading progress</span>
+
           <span className="font-semibold text-stone-800">
             {progress}%
           </span>
@@ -108,12 +121,17 @@ export default function BookItem({
           />
         </div>
 
+        {/* Update progress */}
         <label className="mt-3 block text-xs text-stone-500">
           Update progress
+
           <select
             value={progress}
             onChange={(e) =>
-              onProgressChange(book._id, Number(e.target.value))
+              onProgressChange(
+                book._id,
+                Number(e.target.value)
+              )
             }
             className="mt-1.5 w-full rounded-lg border border-stone-200 bg-white px-2.5 py-2 text-sm text-stone-700 outline-none focus:border-stone-500"
           >

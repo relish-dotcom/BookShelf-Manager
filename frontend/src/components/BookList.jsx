@@ -19,25 +19,27 @@ export default function BookList({ search = "" }) {
   const [error, setError] = useState("");
 
   // API requests without authentication
-  const request = async (path, options = {}) => {
-    const response = await fetch(`${API_URL}${path}`, {
-      ...options,
-      headers: {
-        ...(options.body
-          ? { "Content-Type": "application/json" }
-          : {}),
-        ...options.headers,
-      },
-    });
+const request = async (path, options = {}) => {
+  const isFormData = options.body instanceof FormData;
 
-    const data = await response.json().catch(() => ({}));
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers: {
+      ...(!isFormData && options.body
+        ? { "Content-Type": "application/json" }
+        : {}),
+      ...options.headers,
+    },
+  });
 
-    if (!response.ok) {
-      throw new Error(data.message || "Something went wrong.");
-    }
+  const data = await response.json().catch(() => ({}));
 
-    return data;
-  };
+  if (!response.ok) {
+    throw new Error(data.message || "Something went wrong.");
+  }
+
+  return data;
+};
 
   // Load all books
   const loadBooks = useCallback(async () => {
@@ -64,38 +66,53 @@ export default function BookList({ search = "" }) {
   }, [loadBooks]);
 
   // Add or update a book
-  const handleSave = async (formData) => {
-    setError("");
+const handleSave = async (formData) => {
+  setError("");
 
-    try {
-      const isEditing = Boolean(editingBook);
+  try {
+    const isEditing = Boolean(editingBook);
+    const data = new FormData();
 
-      const savedBook = await request(
-        isEditing ? `/books/${editingBook._id}` : "/books",
-        {
-          method: isEditing ? "PUT" : "POST",
-          body: JSON.stringify(formData),
-        }
-      );
+    data.append("bookName", formData.bookName);
+    data.append("authorName", formData.authorName);
+    data.append("bookType", formData.bookType);
+    data.append(
+      "readingProgress",
+      String(formData.readingProgress)
+    );
 
-      if (isEditing) {
-        setBooks((previous) =>
-          previous.map((book) =>
-            book._id === savedBook._id ? savedBook : book
-          )
-        );
-      } else {
-        setBooks((previous) => [savedBook, ...previous]);
-      }
-
-      setEditingBook(null);
-      setShowForm(false);
-    } catch (err) {
-      setError(err.message || "Unable to save book.");
-      throw err;
+    // Attach the selected cover image, if provided.
+    if (formData.coverFile) {
+      data.append("coverImage", formData.coverFile);
     }
-  };
 
+    const savedBook = await request(
+      isEditing
+        ? `/books/${editingBook._id}`
+        : "/books",
+      {
+        method: isEditing ? "PUT" : "POST",
+        body: data,
+      }
+    );
+
+    if (isEditing) {
+      setBooks((previous) =>
+        previous.map((book) =>
+          book._id === savedBook._id ? savedBook : book
+        )
+      );
+    } else {
+      setBooks((previous) => [savedBook, ...previous]);
+    }
+
+    setEditingBook(null);
+    setShowForm(false);
+  } catch (err) {
+    setError(err.message || "Unable to save book.");
+    throw err;
+  }
+};
   // Open the form to edit a book
   const handleEdit = (book) => {
     setEditingBook(book);
